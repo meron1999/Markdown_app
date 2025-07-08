@@ -5,7 +5,8 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const session = require('express-session');
-const SQLiteStore = require('connect-sqlite3')(session);
+const pgSession = require('connect-pg-simple')(session);
+const { Pool } = require('pg');
 
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
@@ -30,12 +31,11 @@ if (!fs.existsSync(sessionDir)) {
 
 // Session Middleware Setup
 app.use(session({
-  store: new SQLiteStore({
-    db: 'sessions.sqlite', // セッション情報を保存するファイル名
-    dir: './var/db',       // 上記ファイルを保存するディレクトリ
+  store: new pgSession({
+    pool: new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false }),
+    tableName: 'session'
   }),
-  // このシークレットキーは、本番環境では環境変数から読み込むなどして、より安全に管理してください。
-  secret: 'a-very-secret-and-long-key-that-is-hard-to-guess',
+  secret: process.env.SESSION_SECRET || 'a-very-secret-and-long-key-that-is-hard-to-guess',
   resave: false,
   saveUninitialized: false,
   cookie: {
