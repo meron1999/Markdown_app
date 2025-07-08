@@ -151,4 +151,34 @@ router.post('/delete/:id', isAuthenticated, async (req, res, next) => {
   }
 });
 
+// サインアップページ
+router.get('/signup', (req, res) => {
+  const errorMessage = req.session.errorMessage;
+  delete req.session.errorMessage;
+  res.render('signup', { errorMessage });
+});
+
+// サインアップ処理
+router.post('/signup', async (req, res) => {
+  try {
+    const { name, pass } = req.body;
+    if (!name || !pass) {
+      req.session.errorMessage = '名前とパスワードは必須です。';
+      return res.redirect('/signup');
+    }
+    const existingUser = await User.findOne({ where: { name } });
+    if (existingUser) {
+      req.session.errorMessage = 'そのユーザー名は既に使われています。';
+      return res.redirect('/signup');
+    }
+    const hashedPassword = await bcrypt.hash(pass, 10);
+    await User.create({ name, pass: hashedPassword });
+    req.session.user = { name };
+    res.redirect('/dashboard');
+  } catch (err) {
+    req.session.errorMessage = '登録に失敗しました。';
+    res.redirect('/signup');
+  }
+});
+
 module.exports = router;
